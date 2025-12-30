@@ -1,37 +1,55 @@
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
-from rest_framework.decorators import action
-from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import generics, serializers, viewsets
 from rest_framework.filters import OrderingFilter
+from rest_framework.permissions import AllowAny, IsAuthenticated
+
 from .models import Payment
-from .serializers import UserSerializer, PaymentSerializer
+from .permissions import IsOwner
+from .serializers import PaymentSerializer, RegisterSerializer, UserSerializer
 
 User = get_user_model()
 
 
 class UserViewSet(viewsets.ModelViewSet):
     """Вьюсет пользователей."""
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
 
-    @action(detail=False, methods=['get', 'patch'], permission_classes=[IsAuthenticated])
-    def me(self, request):
-        """Эндпоинт /me/ для текущего пользователя."""
-        serializer = self.get_serializer(request.user, data=request.data, partial=True)
-        if request.method == 'PATCH':
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-        return Response(serializer.data)
+    queryset = User.objects.all()
+
+    def get_serializer_class(self):
+        if self.action == "retrieve" and self.request.user != self.get_object():
+            return PublicUserSerializer
+        return UserSerializer
+
+    def get_permissions(self):
+        if self.action == "me":
+            return [IsAuthenticated()]
+        elif self.action in ["update", "partial_update"]:
+            return [IsAuthenticated(), IsOwner()]
+        return [IsAuthenticated()]
+
+
+class PublicUserSerializer(serializers.ModelSerializer):
+    """Публичный профиль без чувствительных данных."""
+
+    class Meta:
+        model = User
+        fields = ("id", "email", "phone", "city", "avatar", "date_joined")
 
 
 class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
     """Вьюсет платежей с фильтрацией и сортировкой."""
+
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ['course', 'lesson', 'payment_method']
-    ordering_fields = ['payment_date']
-    ordering = ['-payment_date']
+    filterset_fields = ["course", "lesson", "payment_method"]
+    ordering_fields = ["payment_date"]
+    ordering = ["-payment_date"]
+
+
+class RegisterView(generics.CreateAPIView):
+    """Регистрация нового пользователя."""
+
+    serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
