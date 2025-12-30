@@ -1,14 +1,13 @@
-from django.urls import include, path
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views import UserViewSet, PaymentViewSet
 
-from .views import UserViewSet
+router = DefaultRouter()
+router.register(r'users', UserViewSet)
+router.register(r'payments', PaymentViewSet)
 
 app_name = 'users'
 
-router = DefaultRouter()
-router.register(r"users", UserViewSet)
-
 urlpatterns = [
-    path("", include(router.urls)),
-    # /api/users/me/ уже автоматически доступен через action
+    path('', include(router.urls)),
 ]
