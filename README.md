@@ -81,6 +81,25 @@ http://127.0.0.1:8000/admin/
 - Назначение пользователей в группы
 - Просмотр и управление всеми моделями
 
+# Деплой на сервер
+
+### Настройка сервера
+- Ubuntu 24.04 LTS на Yandex Cloud
+- Доступ по SSH-ключу (пользователь arhimedko)
+- Nginx + Gunicorn + Supervisor
+- Приложение доступно по http://89.169.191.228/
+
+### GitHub Actions
+- Workflow в `.github/workflows/deploy.yml`
+- Запускается при push в develop
+- Тесты + coverage
+- Деплой по SSH при успешных тестах
+
+### Secrets
+- DEPLOY_SSH_KEY
+- SERVER_IP
+- DEPLOY_USER
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
