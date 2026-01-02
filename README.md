@@ -81,6 +81,20 @@ http://127.0.0.1:8000/admin/
 - Назначение пользователей в группы
 - Просмотр и управление всеми моделями
 
+# Локальный запуск с Docker
+
+```bash
+docker compose up --build
+```
+API доступно по http://localhost/
+Админка: http://localhost/admin/
+
+## Структура контейнеров
+- web: Django + Gunicorn
+- db: PostgreSQL
+- redis: Redis
+- nginx: обратный прокси
+
 # Деплой на сервер
 
 ### Настройка сервера
