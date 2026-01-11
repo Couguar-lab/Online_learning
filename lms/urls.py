@@ -1,7 +1,12 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import CourseViewSet, LessonListCreateView, LessonRetrieveUpdateDestroyView
+from .views import (
+    CourseViewSet,
+    LessonListCreateView,
+    LessonRetrieveUpdateDestroyView,
+    SubscriptionView,
+)
 
 app_name = "lms"
 
@@ -16,4 +21,5 @@ urlpatterns = [
         LessonRetrieveUpdateDestroyView.as_view(),
         name="lesson-detail",
     ),
+    path("subscribe/", SubscriptionView.as_view(), name="subscribe"),
 ]
