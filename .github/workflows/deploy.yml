@@ -2,7 +2,7 @@ name: Test and Deploy
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ develop, feature/hw05-server-deploy-workflow ]
 
 jobs:
   test:
