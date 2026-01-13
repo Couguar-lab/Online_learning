@@ -2,11 +2,13 @@ name: Test and Deploy
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ develop, feature/hw05-server-deploy-workflow ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: "django-insecure-default-for-tests-only-change-in-prod"
     steps:
     - uses: actions/checkout@v4
 
