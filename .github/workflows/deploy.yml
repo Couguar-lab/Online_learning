@@ -1,0 +1,56 @@
+name: Test and Deploy
+
+on:
+  push:
+    branches: [ develop, feature/hw05-server-deploy-workflow ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: "django-insecure-default-for-tests-only-change-in-prod"
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt coverage
+
+    - name: Run tests with coverage
+      run: |
+        source venv/bin/activate
+        coverage run manage.py test tests
+        coverage report --fail-under=70
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Deploy to server
+      env:
+        DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        SERVER_IP: ${{ secrets.SERVER_IP }}
+        DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      run: |
+        echo "$DEPLOY_SSH_KEY" > deploy_key
+        chmod 600 deploy_key
+        ssh -i deploy_key -o StrictHostKeyChecking=no $DEPLOY_USER@$SERVER_IP << 'EOF'
+          cd /home/arhimedko/lms_project
+          git pull origin develop
+          source venv/bin/activate
+          pip install -r requirements.txt
+          python manage.py migrate
+          python manage.py collectstatic --no-input
+          sudo supervisorctl restart lms
+        EOF
