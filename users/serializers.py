@@ -29,7 +29,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор пользователя с историей платежей."""
 
-    payments = PaymentSerializer(many=True, read_only=True, source="payments")
+    payments = PaymentSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -44,6 +44,14 @@ class UserSerializer(serializers.ModelSerializer):
             "payments",
         )
         read_only_fields = ("id", "date_joined", "last_login", "payments")
+
+    def to_representation(self, instance):
+        """Скрываем платежи в чужом профиле."""
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        if request and request.user != instance:
+            data.pop("payments", None)
+        return data
 
 
 class RegisterSerializer(serializers.ModelSerializer):

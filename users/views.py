@@ -1,8 +1,14 @@
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, serializers, viewsets
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+)
+from rest_framework.response import Response
 
 from .models import Payment
 from .permissions import IsOwner
@@ -15,16 +21,28 @@ class UserViewSet(viewsets.ModelViewSet):
     """Вьюсет пользователей."""
 
     queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
-    def get_serializer_class(self):
-        if self.action == "retrieve" and self.request.user != self.get_object():
-            return PublicUserSerializer
-        return UserSerializer
+    @action(
+        detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated]
+    )
+    def me(self, request):
+        """Эндпоинт /me/ — текущий пользователь."""
+        if request.method == "GET":
+            serializer = self.get_serializer(request.user)
+            return Response(serializer.data)
+        elif request.method == "PATCH":
+            serializer = self.get_serializer(
+                request.user, data=request.data, partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
 
     def get_permissions(self):
-        if self.action == "me":
-            return [IsAuthenticated()]
-        elif self.action in ["update", "partial_update"]:
+        """Запрет редактирования чужого профиля."""
+        if self.action in ["update", "partial_update", "destroy"]:
             return [IsAuthenticated(), IsOwner()]
         return [IsAuthenticated()]
 
