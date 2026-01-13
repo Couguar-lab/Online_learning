@@ -2,7 +2,7 @@ name: Docker Test and Deploy
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ develop, feature/hw06-docker-deploy ]
 
 jobs:
   test:
@@ -49,7 +49,7 @@ jobs:
         DB_HOST: localhost
         DB_PORT: 5432
       run: |
-        coverage run manage.py test tests
+        coverage run manage.py test lms.test
         coverage report --fail-under=70
 
   deploy:
