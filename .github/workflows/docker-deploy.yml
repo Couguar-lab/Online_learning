@@ -1,0 +1,75 @@
+name: Docker Test and Deploy
+
+on:
+  push:
+    branches: [ develop, feature/hw06-docker-deploy ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: lms_db
+          POSTGRES_USER: lms_user
+          POSTGRES_PASSWORD: 12345
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt coverage
+
+    - name: Run tests
+      env:
+        DB_ENGINE: django.db.backends.postgresql
+        DB_NAME: lms_db
+        DB_USER: lms_user
+        DB_PASSWORD: 12345
+        DB_HOST: localhost
+        DB_PORT: 5432
+      run: |
+        coverage run manage.py test lms.test
+        coverage report --fail-under=70
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Deploy to server via SSH
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        script: |
+          cd /home/arhimedko/lms_project
+          git pull origin develop
+          docker compose down
+          docker compose up -d --build
+          docker compose exec web python manage.py migrate
+          docker compose exec web python manage.py collectstatic --no-input
