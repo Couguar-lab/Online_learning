@@ -9,6 +9,7 @@ from users.permissions import IsModerator, IsOwner
 from .models import Course, Lesson, Subscription
 from .paginators import LMSPagination
 from .serializers import CourseSerializer, LessonSerializer
+from .tasks import send_course_update_email
 
 
 # CRUD для курсов — ModelViewSet
@@ -32,6 +33,11 @@ class CourseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Автоматическая привязка курса к создателю."""
         serializer.save(owner=self.request.user)
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        # Отправляем уведомление асинхронно
+        send_course_update_email.delay(serializer.instance.id)
 
 
 # CRUD для уроков — Generic Views

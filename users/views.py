@@ -1,3 +1,4 @@
+import stripe
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, serializers, viewsets
@@ -9,10 +10,14 @@ from rest_framework.permissions import (
     IsAuthenticatedOrReadOnly,
 )
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import status
 
 from .models import Payment
 from .permissions import IsOwner
 from .serializers import PaymentSerializer, RegisterSerializer, UserSerializer
+from .services import create_product, create_price, create_checkout_session
+from django.urls import reverse
 
 User = get_user_model()
 
@@ -25,7 +30,7 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     @action(
-        detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated]
+        detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated], url_path='me', url_name='me'
     )
     def me(self, request):
         """Эндпоинт /me/ — текущий пользователь."""
@@ -71,3 +76,43 @@ class RegisterView(generics.CreateAPIView):
 
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+
+class CreatePaymentView(APIView):
+    """Создать платеж и получить ссылку на оплату."""
+
+    def post(self, request):
+        serializer = PaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payment = serializer.save(user=request.user)
+
+        # Создать продукт и цену в Stripe
+        product_id = create_product(payment.course.title)
+        price_id = create_price(product_id, payment.amount)
+
+        # Сохранить Stripe ID
+        payment.stripe_product_id = product_id
+        payment.stripe_price_id = price_id
+
+        # Создать сессию оплаты
+        success_url = request.build_absolute_uri(reverse('payment-success'))
+        cancel_url = request.build_absolute_uri(reverse('payment-cancel'))
+        session_url = create_checkout_session(price_id, success_url, cancel_url)
+
+        payment.stripe_session_url = session_url
+        payment.save()
+
+        return Response({
+            'payment_id': payment.id,
+            'session_url': session_url
+        }, status=status.HTTP_201_CREATED)
+
+class CheckPaymentStatus(APIView):
+    def get(self, request, payment_id):
+        try:
+            payment = Payment.objects.get(id=payment_id, user=request.user)
+            session = stripe.checkout.Session.retrieve(payment.stripe_session_id)
+            return Response({"status": session.payment_status})
+        except Payment.DoesNotExist:
+            return Response({"error": "Payment not found or not yours"}, status=status.HTTP_404_NOT_FOUND)
+        except stripe.error.StripeError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
