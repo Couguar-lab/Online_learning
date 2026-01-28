@@ -29,7 +29,7 @@
 # Установка и запуск
 ```bash
 # Клонирование репозитория
-git clone <ссылка_на_репозиторий>
+git clone https://github.com/Couguar-lab/Online_learning.git
 cd Online_learning
 
 # Создание виртуального окружения
@@ -41,7 +41,7 @@ pip install -r requirements.txt
 
 # Настройка .env (пример в .env.example)
 copy .env.example .env
-# Отредактируйте .env под свои данные PostgreSQL
+# Отредактируйте .env под свои данные
 
 # Миграции
 python manage.py migrate
@@ -83,6 +83,8 @@ http://127.0.0.1:8000/admin/
 
 # Локальный запуск с Docker
 
+Проект полностью контейнеризирован и запускается одной командой.
+
 ```bash
 docker compose up --build
 ```
@@ -95,13 +97,44 @@ API доступно по http://localhost/
 - redis: Redis
 - nginx: обратный прокси
 
+## Проверка работоспособности каждого сервиса
+```bash
+docker compose ps
+```
+Все контейнеры должны иметь статус Up
+
+## Проверка логов каждого сервиса
+```bash
+# Логи Django (web)
+docker compose logs web
+
+# Логи PostgreSQL (db)
+docker compose logs db
+
+# Логи Redis
+docker compose logs redis
+
+# Логи Nginx
+docker compose logs nginx
+```
+
+## Проверка Celery
+```bash
+docker compose logs celery
+```
+Результат: вывод строк о подключении к Redis
+
+## Остановка проекта
+```bash
+docker compose down
+```
+
 # Деплой на сервер
 
 ### Настройка сервера
 - Ubuntu 24.04 LTS на Yandex Cloud
 - Доступ по SSH-ключу (пользователь arhimedko)
 - Nginx + Gunicorn + Supervisor
-- Приложение доступно по http://89.169.191.228/
 
 ### GitHub Actions
 - Workflow в `.github/workflows/deploy.yml`

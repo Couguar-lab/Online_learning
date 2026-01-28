@@ -54,12 +54,16 @@ class PaymentAdmin(admin.ModelAdmin):
     """Админка платежей."""
 
     list_display = (
+        "id",
         "user",
-        "payment_date",
+        "amount",
         "course",
         "lesson",
-        "amount",
+        "payment_date",
         "payment_method",
+        "status",
     )
-    list_filter = ("payment_method", "course", "lesson")
-    search_fields = ("user__email",)
+    list_filter = ("payment_method", "status", "course", "lesson")
+    search_fields = ("user__email", "course__title")
+    readonly_fields = ("created_at", "stripe_product_id", "stripe_price_id", "stripe_session_url")
+    list_per_page = 20

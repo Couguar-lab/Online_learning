@@ -51,6 +51,8 @@ class UserSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.user != instance:
             data.pop("payments", None)
+            if "payments" in data:
+                del data["payments"]
         return data
 
 
